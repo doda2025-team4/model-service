@@ -45,16 +45,11 @@ jobs:
           git tag ${{ steps.version.outputs.version }}
           git push origin ${{ steps.version.outputs.version }}
 
-      - name: Create GitHub Release
-        id: create_release
+      - name: Create GitHub Release and upload trained models
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.version }}
           name: "Model Release ${{ steps.version.outputs.version }}"
           draft: false
           prerelease: false
-
-      - name: Upload trained models
-        uses: softprops/action-gh-release@v2
-        with:
           files: output/*.joblib
