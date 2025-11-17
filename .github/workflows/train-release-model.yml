@@ -38,6 +38,13 @@ jobs:
           VERSION="model-$(date +'%Y%m%d-%H%M%S')"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Create git tag
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.version.outputs.version }}
+          git push origin ${{ steps.version.outputs.version }}
+
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
