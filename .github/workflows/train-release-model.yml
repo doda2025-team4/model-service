@@ -1,0 +1,55 @@
+name: Train and Release Model
+
+on:
+  workflow_dispatch:
+
+jobs:
+  train-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Prepare output directory
+        run: mkdir -p output
+
+      - name: Run data preprocessing
+        run: |
+          python src/read_data.py
+          python src/text_preprocessing.py
+
+      - name: Train model
+        run: python src/text_classification.py
+
+      - name: Generate version string
+        id: version
+        run: |
+          VERSION="model-$(date +'%Y%m%d-%H%M%S')"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create git tag
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.version.outputs.version }}
+          git push origin ${{ steps.version.outputs.version }}
+
+      - name: Create GitHub Release and upload trained models
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "Model Release ${{ steps.version.outputs.version }}"
+          draft: false
+          prerelease: false
+          files: output/*.joblib
