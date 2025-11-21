@@ -8,6 +8,13 @@ RUN pip install -r requirements.txt
 
 COPY src/ ./src/
 COPY smsspamcollection/ ./smsspamcollection/
+COPY output/ ./output/
+
+# F10: model directory and volume for models
+ENV MODEL_DIR=/models
+RUN mkdir -p ${MODEL_DIR}
+VOLUME ["/models"]
+
 
 ENV MODEL_SERVICE_PORT=8081
 EXPOSE 8081
