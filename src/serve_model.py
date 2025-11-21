@@ -1,3 +1,6 @@
+"""
+Flask API of the SMS Spam detection model model.
+"""
 import os
 from pathlib import Path
 
@@ -48,6 +51,27 @@ swagger = Swagger(app)
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    """
+    Predict whether an SMS is Spam.
+    ---
+    consumes:
+      - application/json
+    parameters:
+        - name: input_data
+          in: body
+          description: message to be classified.
+          required: True
+          schema:
+            type: object
+            required: sms
+            properties:
+                sms:
+                    type: string
+                    example: This is an example of an SMS.
+    responses:
+      200:
+        description: "The result of the classification: 'spam' or 'ham'."
+    """
     input_data = request.get_json()
     sms = input_data.get('sms')
     processed_sms = prepare(sms)
