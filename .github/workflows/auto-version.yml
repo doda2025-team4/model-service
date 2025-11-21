@@ -23,7 +23,7 @@ jobs:
       - name: Get latest tag
         id: read
         run: |
-          LATEST=$(git tag --sort=-creatordate | head -n1)
+          LATEST=$(git tag --sort=-creatordate | grep '^v' | head -n1)
           if [ -z "$LATEST" ]; then
             LATEST="v0.0.0"
           fi
