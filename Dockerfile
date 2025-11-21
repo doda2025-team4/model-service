@@ -9,6 +9,7 @@ RUN pip install -r requirements.txt
 COPY src/ ./src/
 COPY smsspamcollection/ ./smsspamcollection/
 
+ENV MODEL_SERVICE_PORT=8081
 EXPOSE 8081
 
 CMD ["python", "src/serve_model.py"]
