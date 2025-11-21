@@ -1,0 +1,70 @@
+on:
+  push:
+    branches:
+      - main
+      - f8
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    outputs:
+      new-version: ${{ steps.next.outputs.new }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed to get all tags
+
+      - name: Get latest tag
+        id: read
+        run: |
+          LATEST=$(git tag --sort=-creatordate | head -n1)
+          if [ -z "$LATEST" ]; then
+            LATEST="v0.0.0"
+          fi
+          echo "latest=$LATEST"
+          echo "current=${LATEST#v}" >> $GITHUB_OUTPUT
+
+      - name: Determine bump type (semantic)
+        id: bump
+        run: |
+          MSG=$(git log -1 --pretty=%B)
+          if echo "$MSG" | grep -E "(BREAKING CHANGE|!:)"; then
+            echo "type=major" >> $GITHUB_OUTPUT
+          elif echo "$MSG" | grep -E "^feat"; then
+            echo "type=minor" >> $GITHUB_OUTPUT
+          else
+            echo "type=patch" >> $GITHUB_OUTPUT
+
+      - name: Compute next version
+        id: next
+        run: |
+          CUR=${{ steps.read.outputs.current }}
+          TYPE=${{ steps.bump.outputs.type }}
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CUR"
+
+          if [ "$TYPE" = "major" ]; then
+            MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0
+          elif [ "$TYPE" = "minor" ]; then
+            MINOR=$((MINOR+1)); PATCH=0
+          else
+            PATCH=$((PATCH+1))
+          fi
+
+          NEW="$MAJOR.$MINOR.$PATCH"
+          echo "new=$NEW" >> $GITHUB_OUTPUT
+
+      - name: Create tag and release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ steps.next.outputs.new }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" --generate-notes
