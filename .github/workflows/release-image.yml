@@ -1,10 +1,21 @@
 name: Release Container Image
 
 on:
-  workflow_dispatch:
-  push:
-    tags:
-      - "v*"
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      branch:
+        required: true
+        type: string
+    secrets:
+      token:
+        required: true
+
+permissions:
+  contents: write
+  packages: write
 
 jobs:
   build-and-push:
@@ -24,13 +35,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Extract version from tag
-        id: version
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/}"
-          VERSION="${VERSION#v}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
@@ -38,6 +42,6 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+            ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${{ inputs.version }}
+            ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:latest
           platforms: linux/amd64,linux/arm64
