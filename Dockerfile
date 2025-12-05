@@ -8,7 +8,7 @@ RUN pip install -r requirements.txt
 
 COPY src/ ./src/
 COPY smsspamcollection/ ./smsspamcollection/
-COPY output/ ./output/
+
 
 # F10: model directory and volume for models
 ENV MODEL_DIR=/models
