@@ -2,15 +2,52 @@
 Flask API of the SMS Spam detection model model.
 """
 import os
+from pathlib import Path
+
 import joblib
+import requests
 from flask import Flask, jsonify, request
 from flasgger import Swagger
 import pandas as pd
 
 from text_preprocessing import prepare, _extract_message_len, _text_process
 
+MODEL_DIR = Path(os.getenv("MODEL_DIR", "/models"))
+MODEL_FILE = os.getenv("MODEL_FILE", "model.joblib")
+PREPROCESSOR_FILE = os.getenv("PREPROCESSOR_FILE", "preprocessor.joblib")
+MODEL_URL = os.getenv("MODEL_URL")
+PREPROCESSOR_URL = os.getenv("PREPROCESSOR_URL")
+
+MODEL = None
+
+
+def ensure_model_present(file, url) -> Path:
+    path = MODEL_DIR / file
+
+    if path.exists():
+        print(f"[model-service] Using existing model file: {path}")
+        return path
+
+    if not url:
+        raise RuntimeError(
+            f"URL is not set and model file {path} does not exist. "
+            "Either mount a volume with the model or configure a download URL."
+        )
+
+    print(f"[model-service] Downloading model file from {url}")
+    response = requests.get(url, timeout=30)
+    response.raise_for_status()
+
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    with open(path, "wb") as f:
+        f.write(response.content)
+
+    print(f"[model-service] Download complete: {path}")
+    return path
+
 app = Flask(__name__)
 swagger = Swagger(app)
+
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -37,10 +74,9 @@ def predict():
     """
     input_data = request.get_json()
     sms = input_data.get('sms')
-    processed_sms = prepare(sms)
-    model = joblib.load('output/model.joblib')
-    prediction = model.predict(processed_sms)[0]
-    
+    processed_sms = prepare(sms, PREPROCESSOR_PATH)
+    prediction = MODEL.predict(processed_sms)[0]
+
     res = {
         "result": prediction,
         "classifier": "decision tree",
@@ -49,7 +85,11 @@ def predict():
     print(res)
     return jsonify(res)
 
+
 if __name__ == '__main__':
-    port = os.environ.get("MODEL_SERVICE_PORT")
-    #clf = joblib.load('output/model.joblib')
-    app.run(host="0.0.0.0", port=port, debug=True)
+    model_path = ensure_model_present(MODEL_FILE, MODEL_URL)
+    MODEL = joblib.load(model_path)
+    PREPROCESSOR_PATH = ensure_model_present(PREPROCESSOR_FILE, PREPROCESSOR_URL)
+
+    port = os.environ.get("MODEL_SERVICE_PORT", "8080")
+    app.run(host="0.0.0.0", port=int(port), debug=True)
