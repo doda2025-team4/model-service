@@ -9,7 +9,9 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -38,18 +40,11 @@ jobs:
           VERSION="model-$(date +'%Y%m%d-%H%M%S')"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create git tag
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git tag ${{ steps.version.outputs.version }}
-          git push origin ${{ steps.version.outputs.version }}
-
       - name: Create GitHub Release and upload trained models
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.version }}
-          name: "Model Release ${{ steps.version.outputs.version }}"
-          draft: false
-          prerelease: false
-          files: output/*.joblib
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BRANCH="${{ github.ref_name }}"
+
+          gh release create "$VERSION" ./output/*.joblib -t "Model Release $VERSION" --target "$BRANCH" --latest=false
