@@ -97,7 +97,6 @@ jobs:
           BRANCH="${{ github.ref_name }}"
 
           gh release create "$VERSION" --target "$BRANCH" --generate-notes
-          gh release edit "$VERSION" --latest
 
   release-image:
     needs: bump
