@@ -75,7 +75,7 @@ jobs:
           BRANCH="${{ inputs.branch || github.ref_name }}"
 
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --target "$BRANCH" --title "Release $TAG" --latest=false
+            gh release create --target "$BRANCH" --title "Release $TAG" --latest=false "$TAG"
           fi
 
       - name: Upload trained models to release
