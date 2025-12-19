@@ -1,107 +1,39 @@
+name: Auto Version
+
 on:
   push:
     branches:
-      - main
+      - 'main'
+      - 'canary'
+      - 'non-latest-releases'
 
 permissions:
   contents: write
   packages: write
 
 jobs:
-  bump:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.next.outputs.version }}
+  get-version:
+    uses: ./.github/workflows/get-semantic-version.yml
+    with:
+      branch: ${{ github.ref_name }}
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+  release-version:
+    needs: 
+      - get-version
+    if: ${{ needs.get-version.outputs.is-new == 'true' }}
+    uses: ./.github/workflows/create-release.yml
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      branch: ${{ github.ref_name }}
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get previous version
-        id: read
-        run: |
-          BRANCH="${{ github.ref_name }}"
-          RELEASE_TAGS=$(git tag --merged "$BRANCH" | grep -E "^v[0-9]+\.[0-9]+\.[0-9]$" || true) 
-
-          # If no release version tags exist yet, create a v0.0.0.
-          if [ -z "$RELEASE_TAGS" ]; then
-            echo "No previous versions found, creating version 0.0.0"
-            echo "version=v0.0.1" >> $GITHUB_OUTPUT
-            echo "is_new=true" >> $GITHUB_OUTPUT
-            exit
-          fi
-
-          LATEST_RELEASE=$(echo "$RELEASE_TAGS" | tail -1)
-          CLEAN_LATEST_RELEASE=${LATEST_RELEASE#v}
-          echo "Latest version found: $CLEAN_LATEST_RELEASE"
-          echo "version=$CLEAN_LATEST_RELEASE" >> $GITHUB_OUTPUT
-
-      - name: Determine bump type (semantic)
-        id: bump
-        if: ${{ !steps.read.outputs.is_new }}
-        run: |
-          LATEST_RELEASE="${{ steps.read.outputs.version }}"
-          COMMIT_OF_LATEST_RELEASE=$(git rev-parse "v$LATEST_RELEASE")
-
-          COMMIT_MESSAGES_SINCE_LATEST_RELEASE=$(git log "$COMMIT_OF_LATEST_RELEASE..$INPUT_BRANCH" --pretty=format:"%B")
-          BREAKING_CHANGE_INTRODUCED=$(echo "$COMMIT_MESSAGES_SINCE_LATEST_RELEASE" | grep -E 'BREAKING CHANGE|^[^:]*!:' || true)
-          FEATURE_INTRODUCED=$(echo "$COMMIT_MESSAGES_SINCE_LATEST_RELEASE" | grep -E '^feat(ure)?(\(.*\))?:' || true)
-          PATCH_INTRODUCED=$(echo "$COMMIT_MESSAGES_SINCE_LATEST_RELEASE" | grep -E '^(fix|perf(ormance)?)(\(.*\))?:' || true)
-
-          if [ -n "$BREAKING_CHANGE_INTRODUCED" ] ; then
-            echo "type=major" >> $GITHUB_OUTPUT
-          elif [ -n "$FEATURE_INTRODUCED" ]; then
-            echo "type=minor" >> $GITHUB_OUTPUT
-          elif [ -n "$PATCH_INTRODUCED" ]; then
-            echo "type=patch" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Compute next version
-        id: next
-        run: |
-          if [ -n "${{ steps.read.outputs.is_new }}" ]; then
-            echo "version=${{ steps.read.outputs.version }}" >> $GITHUB_OUTPUT
-            exit
-          fi
-
-          LATEST_RELEASE="${{ steps.read.outputs.version }}"
-          TYPE="${{ steps.bump.outputs.type }}"
-
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_RELEASE"
-
-          if [ "$TYPE" = "major" ]; then
-            echo "Major version increase"
-            MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0
-          elif [ "$TYPE" = "minor" ]; then
-            echo "Minor version increase"
-            MINOR=$((MINOR+1)); PATCH=0
-          elif [ "$TYPE" = "patch" ]; then
-            echo "Patch version increase"
-            PATCH=$((PATCH+1))
-          else
-            echo "No version increase"
-            exit
-          fi
-
-          NEW="$MAJOR.$MINOR.$PATCH"
-          echo "version=$NEW" >> $GITHUB_OUTPUT
-
-      - name: Create tag and release
-        if: ${{ steps.next.outputs.version }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION="v${{ steps.next.outputs.version }}"
-          BRANCH="${{ github.ref_name }}"
-
-          gh release create "$VERSION" --target "$BRANCH" --generate-notes
 
   release-image:
-    needs: bump
-    if: ${{ needs.bump.outputs.version }}
+    needs:
+      - get-version
+      - release-version
+    if: ${{ needs.get-version.outputs.is-new == 'true' }}
     uses: ./.github/workflows/release-image.yml
     with:
-      version: ${{ needs.bump.outputs.version }}
-      branch: ${{ github.ref_name }}
+      version: ${{ needs.get-version.outputs.version }}
