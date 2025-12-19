@@ -28,7 +28,6 @@ jobs:
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
 
-
   release-image:
     needs:
       - get-version
@@ -37,3 +36,16 @@ jobs:
     uses: ./.github/workflows/release-image.yml
     with:
       version: ${{ needs.get-version.outputs.version }}
+  
+  train-and-release-model:
+    needs:
+      - get-version
+      - release-version
+      - release-image
+    if: ${{ needs.get-version.outputs.is-new == 'true' }}
+    uses: ./.github/workflows/train-release-model.yml
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      branch: ${{ github.ref_name }}
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
