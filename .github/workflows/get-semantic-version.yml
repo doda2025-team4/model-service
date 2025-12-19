@@ -85,9 +85,9 @@ jobs:
               IFS='.' read -r LATEST_PRERELEASE_MAJOR LATEST_PRERELEASE_MINOR LATEST_PRERELEASE_PATCH <<< "$CLEAN_LATEST_PRERELEASE"
               LATEST_PRERELEASE_NR=$(echo "$LATEST_PRERELEASE" | sed -E "s/^v[0-9]+\.[0-9]+\.[0-9]+${PRERELEASE_BRANCH}\.([0-9]+)/\1/")
             else
-            LATEST_PRERELEASE_MAJOR=-1
-            LATEST_PRERELEASE_MINOR=-1
-            LATEST_PRERELEASE_PATCH=-1
+              LATEST_PRERELEASE_MAJOR=-1
+              LATEST_PRERELEASE_MINOR=-1
+              LATEST_PRERELEASE_PATCH=-1
             fi
 
             ALREADY_GREATER_MAJOR=$([ "$LATEST_PRERELEASE_MAJOR" -gt "$LATEST_RELEASE_MAJOR" ] && echo "true" || true)
@@ -151,25 +151,24 @@ jobs:
 
             # Determine which version context we're in
             if [ -n "$PRERELEASE_BRANCH" ]; then
-                local base_major=$LATEST_RELEASE_MAJOR
-                local base_minor=$LATEST_RELEASE_MINOR
-                local base_patch=$LATEST_RELEASE_PATCH
-                local current_major=$LATEST_PRERELEASE_MAJOR
-                local current_minor=$LATEST_PRERELEASE_MINOR
-                local current_patch=$LATEST_PRERELEASE_PATCH
-                local current_nr=$LATEST_PRERELEASE_NR
-                local suffix=$PRERELEASE_BRANCH
-                local already_greater_flag="ALREADY_GREATER_${change_type^^}"
+              local base_major=$LATEST_RELEASE_MAJOR
+              local base_minor=$LATEST_RELEASE_MINOR
+              local base_patch=$LATEST_RELEASE_PATCH
+              local current_major=$LATEST_PRERELEASE_MAJOR
+              local current_minor=$LATEST_PRERELEASE_MINOR
+              local current_patch=$LATEST_PRERELEASE_PATCH
+              local current_nr=$LATEST_PRERELEASE_NR
+              local suffix=$PRERELEASE_BRANCH
             else
-                local base_major=$LATEST_RELEASE_MAJOR
-                local base_minor=$LATEST_RELEASE_MINOR
-                local base_patch=$LATEST_RELEASE_PATCH
-                local current_major=$LATEST_MAIN_PRERELEASE_MAJOR
-                local current_minor=$LATEST_MAIN_PRERELEASE_MINOR
-                local current_patch=$LATEST_MAIN_PRERELEASE_PATCH
-                local current_nr=$LATEST_MAIN_PRERELEASE_NR
-                local suffix="-pre-release"
-                local already_greater_suffix="_MAIN"
+              local base_major=$LATEST_RELEASE_MAJOR
+              local base_minor=$LATEST_RELEASE_MINOR
+              local base_patch=$LATEST_RELEASE_PATCH
+              local current_major=$LATEST_MAIN_PRERELEASE_MAJOR
+              local current_minor=$LATEST_MAIN_PRERELEASE_MINOR
+              local current_patch=$LATEST_MAIN_PRERELEASE_PATCH
+              local current_nr=$LATEST_MAIN_PRERELEASE_NR
+              local suffix="-pre-release"
+              local already_greater_suffix="_MAIN"
             fi
 
             local check_major="ALREADY_GREATER_MAJOR${already_greater_suffix}"
@@ -191,15 +190,15 @@ jobs:
             esac
 
             if [ -z "$is_already_greater" ]; then
-                case $change_type in
+              case $change_type in
                 major) NEW_VERSION="$((base_major + 1)).0.0" ;;
                 minor) NEW_VERSION="$base_major.$((base_minor + 1)).0" ;;
                 patch) NEW_VERSION="$base_major.$base_minor.$((base_patch + 1))" ;;
-                esac
-                NEW_NR=1
+              esac
+              NEW_NR=1
             else
-                NEW_VERSION="$current_major.$current_minor.$current_patch"
-                NEW_NR=$((current_nr + 1))
+              NEW_VERSION="$current_major.$current_minor.$current_patch"
+              NEW_NR=$((current_nr + 1))
             fi
 
             FINAL_VERSION="v$NEW_VERSION$suffix.$NEW_NR"
