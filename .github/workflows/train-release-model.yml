@@ -14,10 +14,6 @@ on:
         required: true
 
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Optional release tag to use or create. If the release already contains trained models, they will be overwritten. If not set, a timestamp will be used."
-        required: false
 
 permissions:
   contents: write
@@ -79,7 +75,7 @@ jobs:
           BRANCH="${{ inputs.branch || github.ref_name }}"
 
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --target "$BRANCH" --title "Release $TAG"
+            gh release create "$TAG" --target "$BRANCH" --title "Release $TAG" --latest=false
           fi
 
       - name: Upload trained models to release
