@@ -1,7 +1,22 @@
 name: Train and Release Model
 
 on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      branch:
+        required: true
+        type: string
+    secrets:
+      token:
+        required: true
+
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   train-and-release:
@@ -11,16 +26,24 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ inputs.branch || github.ref_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Prepare output directory
@@ -34,17 +57,29 @@ jobs:
       - name: Train model
         run: python src/text_classification.py
 
-      - name: Generate version string
+      - name: Determine release version
         id: version
         run: |
-          VERSION="model-$(date +'%Y%m%d-%H%M%S')"
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="model-$(date +'%Y%m%d-%H%M%S')"
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release and upload trained models
+      - name: Ensure GitHub release exists
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.token || secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          BRANCH="${{ github.ref_name }}"
+          TAG="${{ steps.version.outputs.version }}"
+          BRANCH="${{ inputs.branch || github.ref_name }}"
 
-          gh release create "$VERSION" ./output/*.joblib -t "Model Release $VERSION" --target "$BRANCH" --latest=false
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create --target "$BRANCH" --title "Release $TAG" --latest=false "$TAG"
+          fi
+
+      - name: Upload trained models to release
+        env:
+          GH_TOKEN: ${{ secrets.token || secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ steps.version.outputs.version }}" ./output/*.joblib --clobber
