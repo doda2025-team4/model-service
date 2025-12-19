@@ -62,8 +62,6 @@ jobs:
     with:
       version: ${{ needs.get-version.outputs.version }}
       latest: true
-    secrets:
-      pat: ${{ secrets.MAVEN_DEPLOY_TOKEN }}
 
   train-and-release-model:
     needs:
