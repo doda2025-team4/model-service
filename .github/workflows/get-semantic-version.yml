@@ -148,56 +148,60 @@ jobs:
           calculate_updated_version() {
             local change_type=$1
             local change_msg=$2
-            
+
             # Determine which version context we're in
             if [ -n "$PRERELEASE_BRANCH" ]; then
-              local base_major=$LATEST_RELEASE_MAJOR
-              local base_minor=$LATEST_RELEASE_MINOR
-              local base_patch=$LATEST_RELEASE_PATCH
-              local current_major=$LATEST_PRERELEASE_MAJOR
-              local current_minor=$LATEST_PRERELEASE_MINOR
-              local current_patch=$LATEST_PRERELEASE_PATCH
-              local current_nr=$LATEST_PRERELEASE_NR
-              local suffix=$PRERELEASE_BRANCH
-              local already_greater_flag="ALREADY_GREATER_${change_type^^}"
+                local base_major=$LATEST_RELEASE_MAJOR
+                local base_minor=$LATEST_RELEASE_MINOR
+                local base_patch=$LATEST_RELEASE_PATCH
+                local current_major=$LATEST_PRERELEASE_MAJOR
+                local current_minor=$LATEST_PRERELEASE_MINOR
+                local current_patch=$LATEST_PRERELEASE_PATCH
+                local current_nr=$LATEST_PRERELEASE_NR
+                local suffix=$PRERELEASE_BRANCH
+                local already_greater_flag="ALREADY_GREATER_${change_type^^}"
             else
-              local base_major=$LATEST_RELEASE_MAJOR
-              local base_minor=$LATEST_RELEASE_MINOR
-              local base_patch=$LATEST_RELEASE_PATCH
-              local current_major=$LATEST_MAIN_PRERELEASE_MAJOR
-              local current_minor=$LATEST_MAIN_PRERELEASE_MINOR
-              local current_patch=$LATEST_MAIN_PRERELEASE_PATCH
-              local current_nr=$LATEST_MAIN_PRERELEASE_NR
-              local suffix="-pre-release"
-              local already_greater_flag="ALREADY_GREATER_${change_type^^}_MAIN"
+                local base_major=$LATEST_RELEASE_MAJOR
+                local base_minor=$LATEST_RELEASE_MINOR
+                local base_patch=$LATEST_RELEASE_PATCH
+                local current_major=$LATEST_MAIN_PRERELEASE_MAJOR
+                local current_minor=$LATEST_MAIN_PRERELEASE_MINOR
+                local current_patch=$LATEST_MAIN_PRERELEASE_PATCH
+                local current_nr=$LATEST_MAIN_PRERELEASE_NR
+                local suffix="-pre-release"
+                local already_greater_suffix="_MAIN"
             fi
-            
+
+            local check_major="ALREADY_GREATER_MAJOR${already_greater_suffix}"
+            local check_minor="ALREADY_GREATER_MINOR${already_greater_suffix}"
+            local check_patch="ALREADY_GREATER_PATCH${already_greater_suffix}"
+
             # Check if this level or higher is already bumped
             local is_already_greater=""
             case $change_type in
               patch)
-                [ -n "${!already_greater_flag}" ] || [ -n "${!already_greater_flag/PATCH/MINOR}" ] || [ -n "${!already_greater_flag/PATCH/MAJOR}" ] && is_already_greater="true"
+                [ -n "${!check_patch}" ] || [ -n "${!check_minor}" ] || [ -n "${!check_major}" ] && is_already_greater="true"
                 ;;
               minor)
-                [ -n "${!already_greater_flag}" ] || [ -n "${!already_greater_flag/MINOR/MAJOR}" ] && is_already_greater="true"
+                [ -n "${!check_minor}" ] || [ -n "${!check_major}" ] && is_already_greater="true"
                 ;;
               major)
-                is_already_greater="${!already_greater_flag}"
+                [ -n "${!check_major}" ] && is_already_greater="true"
                 ;;
             esac
-            
+
             if [ -z "$is_already_greater" ]; then
-              case $change_type in
+                case $change_type in
                 major) NEW_VERSION="$((base_major + 1)).0.0" ;;
                 minor) NEW_VERSION="$base_major.$((base_minor + 1)).0" ;;
                 patch) NEW_VERSION="$base_major.$base_minor.$((base_patch + 1))" ;;
-              esac
-              NEW_NR=1
+                esac
+                NEW_NR=1
             else
-              NEW_VERSION="$current_major.$current_minor.$current_patch"
-              NEW_NR=$((current_nr + 1))
+                NEW_VERSION="$current_major.$current_minor.$current_patch"
+                NEW_NR=$((current_nr + 1))
             fi
-            
+
             FINAL_VERSION="v$NEW_VERSION$suffix.$NEW_NR"
             echo "version=$FINAL_VERSION" >> $GITHUB_OUTPUT
             echo "is-new=true" >> $GITHUB_OUTPUT
