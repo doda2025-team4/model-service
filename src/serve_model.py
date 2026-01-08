@@ -25,7 +25,7 @@ def ensure_model_present(file, url) -> Path:
     path = MODEL_DIR / file
 
     if path.exists():
-        print(f"[model-service] Using existing model file: {path}")
+        print(f"[model-service (canary)] Using existing model file: {path}")
         return path
 
     if not url:
@@ -34,7 +34,7 @@ def ensure_model_present(file, url) -> Path:
             "Either mount a volume with the model or configure a download URL."
         )
 
-    print(f"[model-service] Downloading model file from {url}")
+    print(f"[model-service (canary)] Downloading model file from {url}")
     response = requests.get(url, timeout=30)
     response.raise_for_status()
 
@@ -42,7 +42,7 @@ def ensure_model_present(file, url) -> Path:
     with open(path, "wb") as f:
         f.write(response.content)
 
-    print(f"[model-service] Download complete: {path}")
+    print(f"[model-service (canary)] Download complete: {path}")
     return path
 
 app = Flask(__name__)
